@@ -945,9 +945,9 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
               this.currentApplication = ret.application;
               this.lastConnectCheckTime = Date.now();
               if (!path) {
-                console.log('list start');
+                // console.log('list start');
                 const devList = await TransportNodeHid.list();
-                console.log('list end');
+                // console.log('list end');
                 this.currentDevicePath = (!devList) ? '' : devList[0];
               } else {
                 this.currentDevicePath = path;
