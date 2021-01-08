@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ledger Liquid Library Tool</title>
+    <style>
+      #main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 120vh;
+        font-family: sans-serif;
+      }
+      .count {
+        width: 50px;
+      }
+      #authkey-input {
+        vertical-align: middle;
+        margin: auto;
+      }
+      #requestAuthkey {
+        vertical-align: top;
+        margin-top: 13px;
+      }
+      h1 {
+        font-size: 32px;
+      }
+      h2 {
+        font-size: 20px;
+        font-weight: bold;
+      }
+      h3 {
+        font-size: 16px;
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+      }
+      .xpubkey-label {
+        font-size: 12px;
+        display: inline-block;
+        width: 8em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="connect">
+      <h2 id="app-name">ConnectApp: -</h2>
+      <div class="connect-status">
+        <input type="button" id="connect" value="connect" />
+        <input type="text" id="connectResponse" value="disconnect" readonly />
+      </div>
+    </div>
+    <hr/>
+    <div class="sign">
+      <h3 class="sign-title">sign test</h3>
+      <div class="sign-input">
+        <div>
+          <div class="sign-label">count</div>
+          <input type="number" class="count" id="count" value="0" />
+        </div>
+      </div>
+      <input type="button" id="execute" value="execute" />
+    </div>
+
+    <script>
+      // You can also require other files to run in this process
+      require("./renderer.js");
+    </script>
+  </body>
+</html>
