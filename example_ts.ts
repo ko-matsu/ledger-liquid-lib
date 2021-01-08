@@ -1953,7 +1953,7 @@ async function execQuickSignTest() {
       }
       count += 1;
       const connRet = await liquidLib.isConnected();
-      if ((!connRet.success) || connRet.disconnect {
+      if ((!connRet.success) || connRet.disconnect) {
         console.log(connRet);
         throw new Error('connect fail.');
       }
