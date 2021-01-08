@@ -5,7 +5,7 @@ const appNameTitle = 'ConnectApp';
 function changeDisable(disabled: boolean,
     connectDisabled : boolean | undefined = undefined) {
   const fieldNames = [
-    'execute',
+    'executeBtn',
     'connect',
   ];
   for (const name of fieldNames) {
@@ -60,7 +60,7 @@ ipcRenderer.on("ledgerInfo", (event, arg) => {
 });
 
 const connBtn = document.getElementById('connect');
-if (connBtn) {
+if (connBtn != null) {
   connBtn.addEventListener('click', () => {
     changeDisable(true);
     const resp = document.getElementById('connectResponse');
@@ -71,16 +71,17 @@ if (connBtn) {
   });
 }
 
-const execBtn = document.getElementById('execute');
-if (execBtn) {
+const execBtn = document.getElementById('executeBtn');
+if (execBtn != null) {
   execBtn.addEventListener('click', () => {
     changeDisable(true);
     const count = document.getElementById('count');
 
     if (count != null) {
-      if (typeof count.nodeValue == 'string') {
-        const val = parseInt(count.nodeValue, 10);
-        ipcRenderer.send('requestSignTest', val);
+      const value = count.getAttribute('value');
+      if (typeof value == 'string') {
+        parseInt(value, 10);
+        ipcRenderer.send('requestSignTest', value);
       } 
     }
   });

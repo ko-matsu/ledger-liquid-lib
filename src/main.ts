@@ -122,7 +122,7 @@ function createWindow() {
   }))
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  mainWindow.webContents.openDevTools()
 
   // Emitted when the window is closed.
   mainWindow.on("closed", async function() {
@@ -130,7 +130,8 @@ function createWindow() {
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     // mainWindow = null;
-    await Ledger.disconnect();
+    const ret = await Ledger.disconnect();
+    console.log('disconnect:', ret);
   });
 
   // ~~~ BASIC LEDGER EXAMPLE ~~~
@@ -143,7 +144,9 @@ function createWindow() {
   });
 
   ipcMain.on("requestSignTest", async (event, value) => {
-    await signTest(value);
+    let count = parseInt(value, 10);
+    if (count == 0) count = 10;
+    await signTest(count);
   });
   
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
