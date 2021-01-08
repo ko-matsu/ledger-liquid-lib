@@ -1945,12 +1945,18 @@ async function execQuickSignTest() {
       const endTime = Date.now();
       console.log(`getSignature(${count}): ${(endTime - startTime)} msec`);
       if (!sigRet.success) {
+        console.log(sigRet);
         throw new Error('getSignature fail.');
       }
       if (loopSleepTime > 0) {
         await sleep(loopSleepTime * 1000);
       }
       count += 1;
+      const connRet = await liquidLib.isConnected();
+      if ((!connRet.success) || connRet.disconnect {
+        console.log(connRet);
+        throw new Error('connect fail.');
+      }
     }
     console.log(`getSignature loop end. count=${count}, wait=${loopSleepTime}sec`);
   } catch (err) {
