@@ -42,6 +42,7 @@
   },
   "scripts": {
     "ts_example": "ts-node example_ts.ts",
+    "js_example": "node example.js",
     "pubkey": "ts-node example_ts.ts -dp",
     "setauthkey": "ts-node example_ts.ts -a",
     "example": "ts-node example_ts.ts",
