@@ -2,6 +2,7 @@
 import * as cfdjs from 'cfd-js';
 import {LedgerLiquidWrapper, WalletUtxoData, SignatureData, NetworkType, AddressType, GetSignatureState, ProgressInfo, UsbDetectionType} from './src/ledger-liquid-lib';
 import {Device} from 'usb-detection';
+import { features } from 'process';
 
 process.on('unhandledRejection', console.dir);
 
@@ -35,6 +36,7 @@ let waitCancelCount = 0;
 let currentWaitCancelCount = 0;
 let dumpPubkeyMode = false;
 let debugMode = false;
+let genTxTest = false;
 let quickTest = false;
 let loopMaxCount = 1;
 let loopSleepTime = 0;
@@ -50,6 +52,8 @@ for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i]) {
     if (process.argv[i] === '-r') {
       networkType = NetworkType.Regtest;
+    } else if (process.argv[i] === '-gtt') {
+      genTxTest = true;
     } else if (process.argv[i] === '-qt') {
       quickTest = true;
     } else if (process.argv[i] === '-d') {
@@ -1875,8 +1879,196 @@ async function execFixedTest() {
   await liquidLib.disconnect();
 }
 
+function generateTx(index: number, xpub: string) {
+  // base xpub
+  const basePath = 'm/44\'/1784\'/1\'/0';
+  const asset1 = 'aa00000000000000000000000000000000000000000000000000000000000000';
+  const asset2 = 'bb00000000000000000000000000000000000000000000000000000000000000';
+  const inputAmount = BigInt(5000000);
+  const feeAmount = BigInt(50000);
+  const inputAmount2 = inputAmount / BigInt(2);
+  const inputAmount3 = inputAmount2 - feeAmount;
+  // generate random utxo
+  const txid1 = cfdjs.CreateKeyPair({wif: false}).privkey;
+  const txid2 = cfdjs.CreateKeyPair({wif: false}).privkey;
+  const txid3 = cfdjs.CreateKeyPair({wif: false}).privkey;
+  const abfList = [];
+  const vbfList = [];
+  for (let i=0; i<3; ++i) {
+    const abf = cfdjs.CreateKeyPair({wif: false}).privkey;
+    const vbf = cfdjs.CreateKeyPair({wif: false}).privkey;
+    abfList.push(abf);
+    vbfList.push(vbf);
+  }
+  const valueCommitment = cfdjs.GetCommitment({
+    amount: inputAmount,
+    asset: asset1,
+    assetBlindFactor: abfList[1],
+    blindFactor: vbfList[1],
+  }).amountCommitment;
+  const signUtxoList = [
+    {
+      txid: txid2,
+      vout: 1,
+      bip32Path: '',
+      amount: 0,
+      valueCommitment: valueCommitment,
+      descriptor: '',
+    },
+  ];
+  // generate unblind tx
+  
+  const txData = {
+    version: 2,
+    locktime: 0,
+    txins: [{
+      txid: txid1,
+      vout: 0,
+      sequence: 4294967295,
+    },{
+      txid: txid2,
+      vout: 1,
+      sequence: 4294967295,
+    },{
+      txid: txid3,
+      vout: 2,
+      sequence: 4294967295,
+    }],
+    txouts: [{
+      address: '',
+      amount: inputAmount,
+      asset: asset2,
+    },{
+      address: '',
+      amount: inputAmount2,
+      asset: asset1,
+    },{
+      address: '',
+      amount: inputAmount2,
+      asset: asset1,
+    },{
+      address: '',
+      amount: inputAmount2,
+      asset: asset1,
+    },{
+      address: '',
+      amount: inputAmount3,
+      asset: asset1,
+    }],
+    fee: {
+      amount: feeAmount,
+      asset: asset1,
+    },
+  };
+  const max = txData.txouts.length;
+  let count = 0;
+  const txoutKeys = []
+  while (count < max) {
+    const keyPair = cfdjs.CreateKeyPair({wif: false});
+    txoutKeys.push(keyPair.privkey);
+    const addr = cfdjs.CreateAddress({
+      hashType: 'p2wpkh',
+      network: 'regtest',
+      isElements: true,
+      keyData: {
+        hex: keyPair.pubkey,
+        type: 'pubkey',        
+      },
+    });
+    const ctAddr = cfdjs.GetConfidentialAddress({
+      key: keyPair.pubkey,
+      unblindedAddress: addr.address,
+    });
+    txData.txouts[count].address = ctAddr.confidentialAddress;
+    count += 1;
+  }
+  let tx1;
+  try {
+    tx1 = cfdjs.ElementsCreateRawTransaction(txData);
+  } catch (e) {
+    console.log(txData);
+    throw e;
+  }
+
+  // blind tx
+  let txHex = '';
+  const blindReqData: cfdjs.BlindRawTransactionRequest = {
+    tx: tx1.hex,
+    txins: [{
+      txid: txData.txins[0].txid,
+      vout: txData.txins[0].vout,
+      amount: inputAmount,
+      asset: asset1,
+      assetBlindFactor: abfList[0],
+      blindFactor: vbfList[0],
+    },{
+      txid: txData.txins[1].txid,
+      vout: txData.txins[1].vout,
+      amount: inputAmount,
+      asset: asset1,
+      assetBlindFactor: abfList[1],
+      blindFactor: vbfList[1],
+    },{
+      txid: txData.txins[2].txid,
+      vout: txData.txins[2].vout,
+      amount: inputAmount,
+      asset: asset2,
+      assetBlindFactor: abfList[2],
+      blindFactor: vbfList[2],
+    }],
+  };
+  try {
+    txHex = cfdjs.BlindRawTransaction(blindReqData).hex;
+  } catch (e) {
+    console.log(txData);
+    throw e;
+  }
+
+  // calc auth signature
+  // get authorization start ---------------------------------
+  // console.log('*** calc authorization start ***');
+  // console.log('SerializeLedgerFormat =', authorizationHash);
+  const authSig = cfdjs.CalculateEcSignature({
+    sighash: cfdjs.SerializeLedgerFormat({
+        tx: txHex,
+        isAuthorization: true,
+      }).sha256,
+    privkeyData: {
+      privkey: authorizationPrivkey,
+      wif: false,
+    },
+    isGrindR: false,
+  });
+  const authDerSigData = cfdjs.EncodeSignatureByDer({
+    signature: authSig.signature,
+    sighashType: 'all'});
+  const authDerSig = authDerSigData.signature.substring(
+      0, authDerSigData.signature.length - 2);
+  // console.log(`*** calc authorization end. [${authDerSig}] ***`);
+  // get authorization end ---------------------------------
+
+  const network = (networkType == NetworkType.LiquidV1) ? 'mainnet' : 'regtest';
+  const deriveKey = cfdjs.CreateExtkeyFromParentPath({
+    extkey: xpub,
+    childNumberArray: [index],
+    extkeyType: 'extPubkey',
+    network,
+  });
+  const pubkey = cfdjs.GetPubkeyFromExtkey({
+    extkey: deriveKey.extkey,
+    network,
+  });
+  signUtxoList[0].descriptor = `wpkh(${pubkey.pubkey})`;
+  signUtxoList[0].bip32Path = `${basePath}/${count}`;
+  return {
+    tx: txHex,
+    authSignature: authDerSig,
+    signUtxoList: signUtxoList,
+  };
+}
+
 async function execQuickSignTest() {
-  const txHex = fixTxHex2;
+  // const txHex = fixTxHex2;
   const liquidLib = new LedgerLiquidWrapper(networkType);
   const connRet = await liquidLib.connect(0, '');
   if (!connRet.success) {
@@ -1884,19 +2076,7 @@ async function execQuickSignTest() {
     return '';
   }
   try {
-    const signUtxoList = [
-      {
-        // txid: '0bf19f67bc7c39c37b5fd940d4b2f00612bacf6181ab75a6fab31a251911963a',
-        // vout: 1,
-        txid: '95870907daea8c876163c1c72d1005ca4ead8b76b15bd43162d6e4f2948bea04',
-        vout: 3,
-        bip32Path: '',
-        amount: 0,
-        // valueCommitment: '09606bfea1ac0b8e59dac55d9ef37e6f43cca14794224f14207f854aa924fb8a77',
-        valueCommitment: '08f9c032aa17dde3ebab541a59eaff46b1031b2607c5d6c47d556bed7455e6e7d5',
-        descriptor: '',
-      },
-    ];
+    console.log(`getXpubKey call`);
     const basePath = 'm/44\'/1784\'/1\'/0';
     const xpub = await liquidLib.getXpubKey(basePath);
     if (!xpub.success) {
@@ -1905,48 +2085,23 @@ async function execQuickSignTest() {
       return '';
     }
 
-    // get authorization start ---------------------------------
-    // console.log('*** calc authorization start ***');
-    const authorizationHash = cfdjs.SerializeLedgerFormat({
-      tx: txHex,
-      isAuthorization: true,
-    });
-    // console.log('SerializeLedgerFormat =', authorizationHash);
-    const authSig = cfdjs.CalculateEcSignature({
-      sighash: authorizationHash.sha256,
-      privkeyData: {
-        privkey: authorizationPrivkey,
-        wif: false,
-      },
-      isGrindR: false,
-    });
-    const authDerSigData = cfdjs.EncodeSignatureByDer({
-      signature: authSig.signature,
-      sighashType: 'all'});
-    const authDerSig = authDerSigData.signature.substring(
-        0, authDerSigData.signature.length - 2);
-    // console.log(`*** calc authorization end. [${authDerSig}] ***`);
-    // get authorization end ---------------------------------
-
     let count = 0;
-    const network = (networkType == NetworkType.LiquidV1) ? 'mainnet' : 'regtest';
+    const txList = [];
+    console.log(`generateTx loop start. count=${loopMaxCount}`);
+    while (count < loopMaxCount) {
+      txList.push(generateTx(count, xpub.xpubKey));
+      count += 1;
+    }
+    console.log(`generateTx loop end. count=${loopMaxCount}`);
+
+    count = 0;
     console.log(`getSignature loop start. count=${loopMaxCount}, wait=${loopSleepTime}sec`);
     while (count < loopMaxCount) {
-      const deriveKey = cfdjs.CreateExtkeyFromParentPath({
-        extkey: xpub.xpubKey,
-        childNumberArray: [count],
-        extkeyType: 'extPubkey',
-        network,
-      });
-      const pubkey = cfdjs.GetPubkeyFromExtkey({
-        extkey: deriveKey.extkey,
-        network,
-      });
-      signUtxoList[0].descriptor = `wpkh(${pubkey.pubkey})`;
-      signUtxoList[0].bip32Path = `${basePath}/${count}`;
       const startTime = Date.now();
-      let sigRet = await liquidLib.getSignature(txHex,
-          signUtxoList, authDerSig);
+      let sigRet = await liquidLib.getSignature(
+        txList[count].tx,
+        txList[count].signUtxoList,
+        txList[count].authSignature);
       const endTime = Date.now();
       console.log(`getSignature(${count}): ${(endTime - startTime)} msec`);
       if (!sigRet.success) {
@@ -2005,6 +2160,10 @@ if (setAuthorization) {
   execConnectionTest();
 } else if (connectionMonitoringTest) {
   execMonitoringConnectionTest();
+} else if (genTxTest) {
+  const index = 0;
+  const xpub = 'xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8';
+  console.log(generateTx(index, xpub));
 } else if (quickTest) {
   execQuickSignTest();
 } else if ((!signTarget) && (!txData)) {
