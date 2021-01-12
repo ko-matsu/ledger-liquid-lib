@@ -5,7 +5,7 @@ import cfdjs from 'cfd-js'
 const path = require('path');
 const url = require('url');
 
-import {createServer, Server} from 'http';
+import {createServer, Server, ClientRequest} from 'http';
 
 const sleep = (msec: number) => new Promise(
   (resolve) => setTimeout(resolve, msec));
@@ -307,15 +307,16 @@ function createWindow() {
 
   // http server
   server = createServer();
-  server.on('request', async function(req, res) {
+  server.on('request', async function(req: ClientRequest, res) {
       const index = 0;
       const xpub = 'tpubD6NzVbkrYhZ4XyJymmEgYC3uVhyj4YtPFX6yRTbW6RvfRC7Ag3sVhKSz7MNzFWW5MJ7aVBKXCAX7En296EYdpo43M4a4LaeaHuhhgHToSJF';
       const txdata = generateTx(index, xpub);
       res.writeHead(200, {'Content-Type' : 'text/plain; charset=UTF-8'});
       res.write(txdata.tx);
       res.end();
-      console.log('[server] receive and response.');
-  });
+      // console.log('[server] receive and response.');
+      req.destroy();
+    });
   server.listen(40000);
   isUseServer = true;
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
