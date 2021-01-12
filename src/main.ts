@@ -208,6 +208,7 @@ async function signTest(loopMaxCount: number) {
     const xpub = await Ledger.getXpubKey({hdWalletPath: basePath});
 
     let count = 0;
+    let failCount = 0;
     const txList = [];
     console.log(`generateTx loop start. count=${loopMaxCount}`);
     while (count < loopMaxCount) {
@@ -233,8 +234,8 @@ async function signTest(loopMaxCount: number) {
       count += 1;
       const isConnect = await Ledger.checkConnection();
       if (!isConnect) {
-        console.log('disconnect');
-        throw new Error('connect fail.');
+        console.log(`checkConnection fail.(${failCount})`);
+        failCount += 1;
       }
     }
     console.log(`getSignature loop end. count=${count}, wait=${loopSleepTime}sec`);
