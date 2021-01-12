@@ -314,6 +314,7 @@ function createWindow() {
       res.writeHead(200, {'Content-Type' : 'text/plain'});
       res.write(txdata.tx);
       res.end();
+      console.log('[server] receive and response.');
   });
   server.listen(40000);
   isUseServer = true;
