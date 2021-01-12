@@ -68,7 +68,29 @@ export const main: webpack.Configuration = {
         use: 'node-loader'
       }
     ]
-  }
+  },
+
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        {
+          from: path.join(__dirname, '../../', 'node_modules/cfd-js/build/Release/'),
+          to: path.join(__dirname, '../../', 'build/Release'),
+          context: path.join(__dirname, '../../', 'dist')
+        },
+        {
+          from: path.join(__dirname, '../../', 'node_modules/usb/build/Release/usb_bindings.node'),
+          to: path.join(__dirname, '../../', 'build/Release'),
+          context: path.join(__dirname, '../../', 'dist')
+        },
+        {
+          from: path.join(__dirname, '../../', 'node_modules/node-hid/build/Release/HID.node'),
+          to: path.join(__dirname, '../../', 'build/Release'),
+          context: path.join(__dirname, '../../', 'dist')
+        }
+      ]
+    })
+  ]
 }
 
 export const renderer: webpack.Configuration = {
