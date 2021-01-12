@@ -311,7 +311,7 @@ function createWindow() {
       const index = 0;
       const xpub = 'tpubD6NzVbkrYhZ4XyJymmEgYC3uVhyj4YtPFX6yRTbW6RvfRC7Ag3sVhKSz7MNzFWW5MJ7aVBKXCAX7En296EYdpo43M4a4LaeaHuhhgHToSJF';
       const txdata = generateTx(index, xpub);
-      res.writeHead(200, {'Content-Type' : 'text/plain'});
+      res.writeHead(200, {'Content-Type' : 'text/plain; charset=UTF-8'});
       res.write(txdata.tx);
       res.end();
       console.log('[server] receive and response.');
