@@ -307,7 +307,7 @@ function createWindow() {
 
   // http server
   server = createServer();
-  server.on('request', function(req, res) {
+  server.on('request', async function(req, res) {
       const index = 0;
       const xpub = 'tpubD6NzVbkrYhZ4XyJymmEgYC3uVhyj4YtPFX6yRTbW6RvfRC7Ag3sVhKSz7MNzFWW5MJ7aVBKXCAX7En296EYdpo43M4a4LaeaHuhhgHToSJF';
       const txdata = generateTx(index, xpub);
