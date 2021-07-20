@@ -776,6 +776,49 @@ const usbDetectionType = {
 let isStartMonitoring = false;
 const notifyFunctionList = [];
 
+function pollingUsbCheck(obj) {
+  if (!isStartMonitoring) return;
+  let dev = undefined;
+  try {
+    console.log('#pollingUsbCheck call findByIds');
+    dev = usb.findByIds(LedgerDeviceInfo.ledgerUSBVendorId, 1);
+    console.log('#pollingUsbCheck findByIds:', dev);
+  } catch (e) {
+    console.log(e);
+  }
+  const curList = (!dev) ? [] : [{
+    vendorId: dev.deviceDescriptor.idVendor,
+    productId: dev.deviceDescriptor.idProduct,
+    deviceAddress: dev.deviceAddress,
+  }];
+  if (obj.past.length != curList.length) {
+    // notify
+    if (curList.length > 0) {
+      // add
+      console.log(`#pollingUsbCheck add ${curList[0]}`);
+    } else {
+      // remove
+      console.log(`#pollingUsbCheck remove ${obj.past[0]}`);
+    }
+  } else if (obj.past.length == 0) {
+    // do nothing
+  } else if (obj.past[0].deviceAddress != curList[0].deviceAddress) {
+    // notify
+    if (curList.length > 0) {
+      // add
+      console.log(`#pollingUsbCheck remove:${obj.past[0]}`);
+      console.log(`#pollingUsbCheck add:${curList[0]}`);
+    }
+  } else {
+    // match
+  }
+  if (!isStartMonitoring) return;
+  obj.past = curList;
+  setTimeout(async () => {
+    pollingUsbCheck(obj);
+  }, 500);
+}
+
 function connectionNotification(type, usbDevice) {
   const deviceInfo = {
     locationId: 0, // unknown
@@ -862,6 +905,14 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
       usb.on('detach', detachDetectedUsb);
       usb.on('attach', attachDetectedUsb);
       // usbDetect.on('change', changeDetectedUsb);
+      /*
+      const obj = {
+        past: [],
+      };
+      setTimeout(async () => {
+        pollingUsbCheck(obj);
+      }, 500);
+      */
     }
   }
 
@@ -982,6 +1033,8 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
             const errText = e.toString();
             if (errText.indexOf('DisconnectedDevice: Cannot write to HID device') >= 0) {
               // disconnect error
+            } else if (errText.indexOf('DisconnectedDeviceDuringOperation: Cannot write to hid device') >= 0) {
+              // disconnect error
             } else if (errText.indexOf('TypeError: Cannot write to hid device') >= 0) {
               // disconnect error
             } else if (errText.indexOf('TransportError: NoDevice') >= 0) {
@@ -1073,6 +1126,8 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
       } catch (e) {
         const errText = e.toString();
         if (errText.indexOf('DisconnectedDevice: Cannot write to HID device') >= 0) {
+          // disconnect error
+        } else if (errText.indexOf('DisconnectedDeviceDuringOperation: Cannot write to hid device') >= 0) {
           // disconnect error
         } else if (errText.indexOf('TypeError: Cannot write to hid device') >= 0) {
           // disconnect error
