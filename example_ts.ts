@@ -1,7 +1,7 @@
 /* eslint-disable require-jsdoc */
 import * as cfdjs from 'cfd-js';
-import {LedgerLiquidWrapper, WalletUtxoData, SignatureData, NetworkType, AddressType, GetSignatureState, ProgressInfo, UsbDetectionType} from './src/ledger-liquid-lib';
-import {Device} from 'usb-detection';
+import {exit} from 'process';
+import {LedgerLiquidWrapper, WalletUtxoData, SignatureData, NetworkType, AddressType, GetSignatureState, ProgressInfo, UsbDetectionType, Device} from './src/ledger-liquid-lib';
 
 process.on('unhandledRejection', console.dir);
 
@@ -876,23 +876,32 @@ async function execMonitoringConnectionTest() {
   }
 
   LedgerLiquidWrapper.startUsbDetectMonitoring();
+  console.log('call startUsbDetectMonitoring.');
   LedgerLiquidWrapper.registerUsbDetectListener(testMonitoringNotify);
   const connRet = await liquidLib.connect(60, connectDevice);
   if (!connRet.success) {
     console.log('connection fail.(1)', connRet);
     return;
   }
-  console.log('current application:', liquidLib.getCurrentApplication());
-  console.log('last connect info  :', liquidLib.getLastConnectionInfo());
-  for (let connTestCount = 0; connTestCount < 60; ++connTestCount) {
-    if (isError) break;
+  try {
+    console.log('current application:', liquidLib.getCurrentApplication());
+    console.log('last connect info  :', liquidLib.getLastConnectionInfo());
+    for (let connTestCount = 0; connTestCount < 60; ++connTestCount) {
+      if (isError) break;
+      await sleep(1000);
+    }
+    if (isError) {
+      console.log('connection fail on error.');
+    }
+  } catch (e) {
+    console.log(e);
+  } finally {
+    await liquidLib.disconnect();
+    LedgerLiquidWrapper.finishUsbDetectMonitoring();
+    console.log('call finishUsbDetectMonitoring.');
     await sleep(1000);
+    exit(0);
   }
-  if (isError) {
-    console.log('connection fail on error.');
-  }
-  await liquidLib.disconnect();
-  LedgerLiquidWrapper.finishUsbDetectMonitoring();
 }
 
 async function example() {
