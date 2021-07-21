@@ -775,49 +775,7 @@ const usbDetectionType = {
 
 let isStartMonitoring = false;
 const notifyFunctionList = [];
-
-function pollingUsbCheck(obj) {
-  if (!isStartMonitoring) return;
-  let dev = undefined;
-  try {
-    console.log('#pollingUsbCheck call findByIds');
-    dev = usb.findByIds(LedgerDeviceInfo.ledgerUSBVendorId, 1);
-    console.log('#pollingUsbCheck findByIds:', dev);
-  } catch (e) {
-    console.log(e);
-  }
-  const curList = (!dev) ? [] : [{
-    vendorId: dev.deviceDescriptor.idVendor,
-    productId: dev.deviceDescriptor.idProduct,
-    deviceAddress: dev.deviceAddress,
-  }];
-  if (obj.past.length != curList.length) {
-    // notify
-    if (curList.length > 0) {
-      // add
-      console.log(`#pollingUsbCheck add ${curList[0]}`);
-    } else {
-      // remove
-      console.log(`#pollingUsbCheck remove ${obj.past[0]}`);
-    }
-  } else if (obj.past.length == 0) {
-    // do nothing
-  } else if (obj.past[0].deviceAddress != curList[0].deviceAddress) {
-    // notify
-    if (curList.length > 0) {
-      // add
-      console.log(`#pollingUsbCheck remove:${obj.past[0]}`);
-      console.log(`#pollingUsbCheck add:${curList[0]}`);
-    }
-  } else {
-    // match
-  }
-  if (!isStartMonitoring) return;
-  obj.past = curList;
-  setTimeout(async () => {
-    pollingUsbCheck(obj);
-  }, 500);
-}
+const usbTimeout = 5000;
 
 function connectionNotification(type, usbDevice) {
   const deviceInfo = {
@@ -834,6 +792,10 @@ function connectionNotification(type, usbDevice) {
   const vendorId = deviceInfo.vendorId;
   if (LedgerDeviceInfo.ledgerUSBVendorId != vendorId) {
     return;
+  }
+  if (usbDevice.timeout < usbTimeout) {
+    // The ledger device may take over 2000msec to respond.
+    usbDevice.timeout = usbTimeout;
   }
   if (deviceInfo.productId != 1) { // ledger top view
     return;
@@ -900,26 +862,16 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
 
   static startUsbDetectMonitoring() {
     if (!isStartMonitoring) {
-      // usbDetect.startMonitoring();
       isStartMonitoring = true;
       usb.on('detach', detachDetectedUsb);
       usb.on('attach', attachDetectedUsb);
-      // usbDetect.on('change', changeDetectedUsb);
-      /*
-      const obj = {
-        past: [],
-      };
-      setTimeout(async () => {
-        pollingUsbCheck(obj);
-      }, 500);
-      */
+      usb.setDebugLevel(4); // debug level
     }
   }
 
   static finishUsbDetectMonitoring() {
     if (isStartMonitoring) {
       isStartMonitoring = false;
-      // usbDetect.stopMonitoring();
       usb.removeListener('detach', detachDetectedUsb);
       usb.removeListener('attach', attachDetectedUsb);
     }
@@ -1014,10 +966,12 @@ const ledgerLiquidWrapper = class LedgerLiquidWrapper {
               this.currentApplication = ret.application;
               this.lastConnectCheckTime = Date.now();
               if (!path) {
-                console.log('list start');
-                const devList = await TransportNodeHid.list();
-                console.log('list end');
-                this.currentDevicePath = (!devList) ? '' : devList[0];
+                setTimeout(async () => {
+                  console.log('list start');
+                  const devList = await TransportNodeHid.list();
+                  console.log('list end');
+                  this.currentDevicePath = (!devList) ? '' : devList[0];
+                }, 1);
               } else {
                 this.currentDevicePath = path;
               }

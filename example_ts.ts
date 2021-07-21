@@ -802,6 +802,7 @@ async function execConnectionTest() {
         break;
       }
       console.log('reconnect success.');
+      await sleep(1);
       console.log('current application:', liquidLib.getCurrentApplication());
       console.log('last connect info  :', liquidLib.getLastConnectionInfo());
     } else {
@@ -836,6 +837,7 @@ async function execMonitoringConnectionTest() {
       }
     } else {
       console.log('reconnect success.');
+      await sleep(1);
       console.log('current application:', liquidLib.getCurrentApplication());
       console.log('last connect info  :', liquidLib.getLastConnectionInfo());
     }
@@ -878,12 +880,13 @@ async function execMonitoringConnectionTest() {
   LedgerLiquidWrapper.startUsbDetectMonitoring();
   console.log('call startUsbDetectMonitoring.');
   LedgerLiquidWrapper.registerUsbDetectListener(testMonitoringNotify);
-  const connRet = await liquidLib.connect(60, connectDevice);
-  if (!connRet.success) {
-    console.log('connection fail.(1)', connRet);
-    return;
-  }
   try {
+    const connRet = await liquidLib.connect(60, connectDevice);
+    if (!connRet.success) {
+      console.log('connection fail.(1)', connRet);
+      return;
+    }
+    await sleep(1);
     console.log('current application:', liquidLib.getCurrentApplication());
     console.log('last connect info  :', liquidLib.getLastConnectionInfo());
     for (let connTestCount = 0; connTestCount < 60; ++connTestCount) {
